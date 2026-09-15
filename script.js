@@ -28,30 +28,58 @@ document.addEventListener('DOMContentLoaded', function() {
         musicDisc.classList.remove('spinning');
     }
 
+    function startMusic() {
+        bgMusic.volume = 0.8;
+        if (bgMusic.currentTime < MUSIC_START_TIME || bgMusic.ended) {
+            try {
+                bgMusic.currentTime = MUSIC_START_TIME;
+            } catch(err) {
+                console.warn('Seek error:', err);
+            }
+        }
+        return bgMusic.play().then(function() {
+            setPlayingUI();
+            removeAutoplayListeners();
+        }).catch(function(err) {
+            // Autoplay blocked until user interacts
+            setPausedUI();
+        });
+    }
+
     playBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         if (!bgMusic.paused) {
             // Currently playing, so pause it
             bgMusic.pause();
             setPausedUI();
+            removeAutoplayListeners();
         } else {
             // Currently paused, so play it
-            bgMusic.volume = 0.8;
-            if (bgMusic.currentTime < MUSIC_START_TIME || bgMusic.ended) {
-                try {
-                    bgMusic.currentTime = MUSIC_START_TIME;
-                } catch(err) {
-                    console.warn('Seek error:', err);
-                }
-            }
-            bgMusic.play().then(function() {
-                setPlayingUI();
-            }).catch(function(err) {
-                console.error('Playback error:', err);
-                setPausedUI();
-            });
+            startMusic();
         }
     });
+
+    // Try starting music automatically immediately
+    startMusic();
+
+    // Fallback: start music automatically on the user's first click/touch/scroll/keypress
+    function autoPlayHandler() {
+        if (bgMusic.paused) {
+            startMusic();
+        }
+    }
+
+    function removeAutoplayListeners() {
+        window.removeEventListener('click', autoPlayHandler);
+        window.removeEventListener('touchstart', autoPlayHandler);
+        window.removeEventListener('scroll', autoPlayHandler);
+        window.removeEventListener('keydown', autoPlayHandler);
+    }
+
+    window.addEventListener('click', autoPlayHandler);
+    window.addEventListener('touchstart', autoPlayHandler);
+    window.addEventListener('scroll', autoPlayHandler);
+    window.addEventListener('keydown', autoPlayHandler);
 
     // When the song ends, reset the UI
     bgMusic.addEventListener('ended', function() {
