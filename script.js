@@ -1,7 +1,81 @@
 document.addEventListener('DOMContentLoaded', function() {
 
+    // --- SplashCursor WebGL Fluid Cursor Effect ---
+    if (typeof initSplashCursor === 'function') {
+        initSplashCursor({
+            RAINBOW_MODE: false,
+            COLOR: '#FFB7C5'
+        });
+    }
+
+    // --- Background Music (starts at 0:47) ---
+    const bgMusic = document.getElementById('bg-music');
+    const playBtn = document.getElementById('music-play-btn');
+    const playIcon = document.getElementById('play-icon');
+    const musicDisc = document.getElementById('music-disc');
+    const progressFill = document.getElementById('music-progress');
+    const MUSIC_START_TIME = 47;
+
+    function setPlayingUI() {
+        playIcon.textContent = '⏸';
+        playBtn.classList.add('playing');
+        musicDisc.classList.add('spinning');
+    }
+
+    function setPausedUI() {
+        playIcon.textContent = '▶';
+        playBtn.classList.remove('playing');
+        musicDisc.classList.remove('spinning');
+    }
+
+    playBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (!bgMusic.paused) {
+            // Currently playing, so pause it
+            bgMusic.pause();
+            setPausedUI();
+        } else {
+            // Currently paused, so play it
+            bgMusic.volume = 0.8;
+            if (bgMusic.currentTime < MUSIC_START_TIME || bgMusic.ended) {
+                try {
+                    bgMusic.currentTime = MUSIC_START_TIME;
+                } catch(err) {
+                    console.warn('Seek error:', err);
+                }
+            }
+            bgMusic.play().then(function() {
+                setPlayingUI();
+            }).catch(function(err) {
+                console.error('Playback error:', err);
+                setPausedUI();
+            });
+        }
+    });
+
+    // When the song ends, reset the UI
+    bgMusic.addEventListener('ended', function() {
+        setPausedUI();
+        bgMusic.currentTime = MUSIC_START_TIME;
+        progressFill.style.width = '0%';
+    });
+
+    // Progress bar + keep playback after MUSIC_START_TIME
+    bgMusic.addEventListener('timeupdate', function() {
+        if (bgMusic.currentTime < MUSIC_START_TIME && !bgMusic.paused) {
+            bgMusic.currentTime = MUSIC_START_TIME;
+        }
+        if (bgMusic.duration) {
+            var playableRange = bgMusic.duration - MUSIC_START_TIME;
+            var currentProgress = bgMusic.currentTime - MUSIC_START_TIME;
+            var percent = Math.max(0, (currentProgress / playableRange) * 100);
+            progressFill.style.width = percent + '%';
+        }
+    });
+
     // --- Live Age Counter ---
-    const birthDate = new Date('2006-08-14T00:00:00');
+    // Pihu's birthday: September 16
+    const birthDate = new Date('2004-09-16T00:00:00');
     const countdownElement = document.getElementById('countdown');
 
     function updateAge() {
@@ -24,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (months < 0) { months += 12; years--; }
 
-        countdownElement.innerHTML = `${years}y ${months}m ${days}d <br> ${hours}h ${minutes}m ${seconds}s`;
+        countdownElement.innerHTML = years + 'y ' + months + 'm ' + days + 'd <br> ' + hours + 'h ' + minutes + 'm ' + seconds + 's';
     }
     setInterval(updateAge, 1000);
     updateAge();
@@ -42,50 +116,27 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- Hall of Fame Scroller ---
-    const scroller = document.getElementById('hall-of-fame-scroller');
-    const scrollLeftBtn = document.getElementById('scroll-left-btn');
-    const scrollRightBtn = document.getElementById('scroll-right-btn');
+    var scroller = document.getElementById('hall-of-fame-scroller');
+    var scrollLeftBtn = document.getElementById('scroll-left-btn');
+    var scrollRightBtn = document.getElementById('scroll-right-btn');
     if (scroller && scrollLeftBtn && scrollRightBtn) {
-        const card = scroller.querySelector('.snap-center');
-        const cardWidth = card.offsetWidth + parseInt(getComputedStyle(card.parentElement).gap);
+        var card = scroller.querySelector('.snap-center');
+        var cardWidth = card.offsetWidth + parseInt(getComputedStyle(card.parentElement).gap);
 
-        scrollRightBtn.addEventListener('click', () => {
+        scrollRightBtn.addEventListener('click', function() {
             scroller.scrollBy({ left: cardWidth, behavior: 'smooth' });
         });
-        scrollLeftBtn.addEventListener('click', () => {
+        scrollLeftBtn.addEventListener('click', function() {
             scroller.scrollBy({ left: -cardWidth, behavior: 'smooth' });
         });
     }
 
-    // --- Video Uploader ---
-    const videoUploadInput = document.getElementById('video-upload');
-    const videoPlayer = document.getElementById('video-player');
-    const videoUploadLabel = document.getElementById('video-upload-label');
-
-    if(videoUploadInput && videoPlayer && videoUploadLabel) {
-        videoUploadLabel.addEventListener('click', () => {
-            videoUploadInput.click();
-        });
-
-        videoUploadInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const videoURL = URL.createObjectURL(file);
-                videoPlayer.src = videoURL;
-                videoPlayer.classList.remove('hidden');
-                videoUploadLabel.classList.add('hidden');
-                videoPlayer.play();
-            }
-        });
-    }
-
-
     // --- Sakura Petal Animation ---
-    const canvas = document.getElementById('sakura-canvas');
+    var canvas = document.getElementById('sakura-canvas');
     if (canvas) {
-        const ctx = canvas.getContext('2d');
-        let petals = [];
-        const numPetals = 50;
+        var ctx = canvas.getContext('2d');
+        var petals = [];
+        var numPetals = 50;
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -122,25 +173,25 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.closePath();
             ctx.fillStyle = '#FFB7C5';
             ctx.fill();
-        }
+        };
 
         Petal.prototype.update = function() {
             this.x += this.xSpeed;
             this.y += this.ySpeed;
             this.flip += this.flipSpeed;
             this.draw();
-        }
+        };
 
         function createPetals() {
             petals = [];
-            for (let i = 0; i < numPetals; i++) {
+            for (var i = 0; i < numPetals; i++) {
                 petals.push(new Petal());
             }
         }
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            petals.forEach(petal => {
+            petals.forEach(function(petal) {
                 petal.update();
             });
             requestAnimationFrame(animate);
@@ -150,4 +201,3 @@ document.addEventListener('DOMContentLoaded', function() {
         animate();
     }
 });
-
