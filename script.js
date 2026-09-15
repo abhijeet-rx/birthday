@@ -28,22 +28,39 @@ document.addEventListener('DOMContentLoaded', function() {
         musicDisc.classList.remove('spinning');
     }
 
-    function startMusic() {
-        bgMusic.volume = 0.8;
-        if (bgMusic.currentTime < MUSIC_START_TIME || bgMusic.ended) {
-            try {
-                bgMusic.currentTime = MUSIC_START_TIME;
-            } catch(err) {
-                console.warn('Seek error:', err);
+    let seekedToStart = false;
+
+    function safeSeekToStart() {
+        if (!seekedToStart && (bgMusic.currentTime < MUSIC_START_TIME || bgMusic.ended)) {
+            if (bgMusic.readyState >= 1) { // HAVE_METADATA
+                try {
+                    bgMusic.currentTime = MUSIC_START_TIME;
+                    seekedToStart = true;
+                } catch(e) {
+                    console.warn('Seek error:', e);
+                }
             }
         }
-        return bgMusic.play().then(function() {
-            setPlayingUI();
-            removeAutoplayListeners();
-        }).catch(function(err) {
-            // Autoplay blocked until user interacts
-            setPausedUI();
-        });
+    }
+
+    bgMusic.addEventListener('loadedmetadata', safeSeekToStart);
+    bgMusic.addEventListener('canplay', safeSeekToStart);
+
+    function startMusic() {
+        bgMusic.volume = 0.8;
+        safeSeekToStart();
+
+        const promise = bgMusic.play();
+        if (promise !== undefined) {
+            promise.then(function() {
+                safeSeekToStart();
+                setPlayingUI();
+                removeAutoplayListeners();
+            }).catch(function(err) {
+                console.warn('Autoplay waiting for user gesture:', err);
+                setPausedUI();
+            });
+        }
     }
 
     playBtn.addEventListener('click', function(e) {
@@ -55,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
             removeAutoplayListeners();
         } else {
             // Currently paused, so play it
+            seekedToStart = false; // Allow re-seeking if ended or restarted
             startMusic();
         }
     });
@@ -62,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Try starting music automatically immediately
     startMusic();
 
-    // Fallback: start music automatically on the user's first click/touch/scroll/keypress
+    // Fallback: start music automatically on the user's first click/touch/scroll/keypress anywhere
     function autoPlayHandler() {
         if (bgMusic.paused) {
             startMusic();
@@ -71,12 +89,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function removeAutoplayListeners() {
         window.removeEventListener('click', autoPlayHandler);
+        window.removeEventListener('pointerdown', autoPlayHandler);
         window.removeEventListener('touchstart', autoPlayHandler);
         window.removeEventListener('scroll', autoPlayHandler);
         window.removeEventListener('keydown', autoPlayHandler);
     }
 
     window.addEventListener('click', autoPlayHandler);
+    window.addEventListener('pointerdown', autoPlayHandler);
     window.addEventListener('touchstart', autoPlayHandler);
     window.addEventListener('scroll', autoPlayHandler);
     window.addEventListener('keydown', autoPlayHandler);
