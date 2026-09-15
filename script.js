@@ -28,34 +28,26 @@ document.addEventListener('DOMContentLoaded', function() {
         musicDisc.classList.remove('spinning');
     }
 
-    let seekedToStart = false;
-
-    function safeSeekToStart() {
-        if (!seekedToStart && (bgMusic.currentTime < MUSIC_START_TIME || bgMusic.ended)) {
-            if (bgMusic.readyState >= 1) { // HAVE_METADATA
-                try {
-                    bgMusic.currentTime = MUSIC_START_TIME;
-                    seekedToStart = true;
-                } catch(e) {
-                    console.warn('Seek error:', e);
-                }
-            }
-        }
-    }
-
-    bgMusic.addEventListener('loadedmetadata', safeSeekToStart);
-    bgMusic.addEventListener('canplay', safeSeekToStart);
+    let hasSeekedToStart = false;
 
     function startMusic() {
         bgMusic.volume = 0.8;
-        safeSeekToStart();
 
         const promise = bgMusic.play();
         if (promise !== undefined) {
             promise.then(function() {
-                safeSeekToStart();
                 setPlayingUI();
                 removeAutoplayListeners();
+
+                // Only seek to 0:47 AFTER playback is actively running
+                if (!hasSeekedToStart && bgMusic.currentTime < MUSIC_START_TIME) {
+                    try {
+                        bgMusic.currentTime = MUSIC_START_TIME;
+                        hasSeekedToStart = true;
+                    } catch(e) {
+                        console.warn('Seek error:', e);
+                    }
+                }
             }).catch(function(err) {
                 console.warn('Autoplay waiting for user gesture:', err);
                 setPausedUI();
@@ -72,7 +64,6 @@ document.addEventListener('DOMContentLoaded', function() {
             removeAutoplayListeners();
         } else {
             // Currently paused, so play it
-            seekedToStart = false; // Allow re-seeking if ended or restarted
             startMusic();
         }
     });
@@ -93,6 +84,9 @@ document.addEventListener('DOMContentLoaded', function() {
         window.removeEventListener('touchstart', autoPlayHandler);
         window.removeEventListener('scroll', autoPlayHandler);
         window.removeEventListener('keydown', autoPlayHandler);
+        document.removeEventListener('click', autoPlayHandler);
+        document.removeEventListener('pointerdown', autoPlayHandler);
+        document.removeEventListener('touchstart', autoPlayHandler);
     }
 
     window.addEventListener('click', autoPlayHandler);
@@ -100,6 +94,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('touchstart', autoPlayHandler);
     window.addEventListener('scroll', autoPlayHandler);
     window.addEventListener('keydown', autoPlayHandler);
+    document.addEventListener('click', autoPlayHandler);
+    document.addEventListener('pointerdown', autoPlayHandler);
+    document.addEventListener('touchstart', autoPlayHandler);
 
     // When the song ends, reset the UI
     bgMusic.addEventListener('ended', function() {
